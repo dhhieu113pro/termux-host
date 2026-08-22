@@ -1,0 +1,76 @@
+@page
+@{
+    ViewData["Title"] = "App Market";
+}
+
+<div class="space-y-6">
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">One-tap deploy</p>
+                <h2 class="mt-1 text-2xl font-bold">TermuxHost Market</h2>
+                <p class="mt-2 max-w-2xl text-sm text-slate-400">Install verified apps from tested GitHub Release packages. TermuxHost verifies the SHA-256, configures runit, and starts the app for you.</p>
+            </div>
+            <button onclick="loadMarket()" class="rounded-xl border border-slate-700 px-4 py-2 text-sm hover:bg-slate-800">Refresh</button>
+        </div>
+    </section>
+
+    <div id="message" class="hidden rounded-xl border p-4 text-sm"></div>
+    <div id="market" class="grid gap-4 lg:grid-cols-2"></div>
+</div>
+
+<div id="installModal" class="fixed inset-0 z-50 hidden items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4">
+    <div class="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-t-2xl border border-slate-700 bg-slate-900 p-5 shadow-2xl sm:rounded-2xl">
+        <div class="flex items-start justify-between gap-4">
+            <div><p class="text-xs uppercase tracking-wider text-emerald-400">Install application</p><h3 id="modalTitle" class="mt-1 text-xl font-semibold"></h3></div>
+            <button onclick="closeModal()" class="rounded-lg px-3 py-1 text-slate-400 hover:bg-slate-800">✕</button>
+        </div>
+        <div id="configFields" class="mt-5 space-y-4"></div>
+        <div class="mt-6 flex gap-3">
+            <button id="installButton" onclick="installApp()" class="flex-1 rounded-xl bg-emerald-500 px-4 py-3 font-semibold text-slate-950 hover:bg-emerald-400">Install</button>
+            <button onclick="closeModal()" class="rounded-xl border border-slate-700 px-4 py-3">Cancel</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+let selectedId = null;
+let manifest = null;
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+async function loadMarket() {
+    const host = document.getElementById('market');
+    host.innerHTML = '<div class="text-sm text-slate-400">Loading market…</div>';
+    try {
+        const r = await fetch('/api/market'); if (!r.ok) throw new Error('Unable to load market.');
+        const apps = await r.json();
+        host.innerHTML = apps.map(a => `<article class="rounded-2xl border ${a.featured ? 'border-emerald-500/30' : 'border-slate-800'} bg-slate-900/70 p-5">
+            <div class="flex items-start justify-between gap-3"><div><div class="flex flex-wrap gap-2"><span class="rounded-full bg-slate-800 px-2 py-1 text-[11px] text-slate-300">${esc(a.category)}</span>${a.verified ? '<span class="rounded-full bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-300">✓ Verified</span>' : ''}${a.featured ? '<span class="rounded-full bg-cyan-500/10 px-2 py-1 text-[11px] text-cyan-300">Featured</span>' : ''}</div><h3 class="mt-3 text-lg font-semibold">${esc(a.name)}</h3></div><span class="text-xs text-slate-500">${esc(a.latestVersion || 'No release')}</span></div>
+            <p class="mt-2 text-sm leading-6 text-slate-400">${esc(a.description)}</p>
+            <p class="mt-3 font-mono text-xs text-slate-500">${esc(a.repository)}</p>
+            <div class="mt-5 flex gap-2">${a.installed ? `<a href="/Applications" class="flex-1 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-center text-sm text-emerald-300">Installed · Manage</a><button onclick="openInstall('${a.id}')" class="rounded-xl border border-slate-700 px-4 py-2 text-sm">Update</button>` : `<button onclick="openInstall('${a.id}')" ${a.latestVersion ? '' : 'disabled'} class="flex-1 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-40">Install</button>`}</div>
+        </article>`).join('');
+    } catch (e) { host.innerHTML = `<div class="text-rose-300">${esc(e.message)}</div>`; }
+}
+
+async function openInstall(id) {
+    selectedId = id;
+    const r = await fetch(`/api/market/${encodeURIComponent(id)}/manifest`); const body = await r.json();
+    if (!r.ok) return showMessage(body.error || 'Unable to load app configuration.', false);
+    manifest = body; document.getElementById('modalTitle').textContent = body.name;
+    document.getElementById('configFields').innerHTML = (body.configuration || []).map((x,i) => `<label class="block"><span class="text-sm font-medium">${esc(x.label)}${x.required ? ' *' : ''}</span><span class="mt-1 block text-xs text-slate-500">${esc(x.description)}</span><input data-key="${esc(x.key)}" type="${x.secret ? 'password' : 'text'}" value="${esc(x.default || '')}" class="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 font-mono text-sm outline-none focus:border-emerald-500" /></label>`).join('') || '<p class="text-sm text-slate-400">No configuration required.</p>';
+    const modal = document.getElementById('installModal'); modal.classList.remove('hidden'); modal.classList.add('flex');
+}
+function closeModal(){ const m=document.getElementById('installModal'); m.classList.add('hidden'); m.classList.remove('flex'); }
+async function installApp(){
+    const btn=document.getElementById('installButton'); btn.disabled=true; btn.textContent='Installing…';
+    const settings={}; document.querySelectorAll('#configFields [data-key]').forEach(x => settings[x.dataset.key]=x.value);
+    try { const r=await fetch(`/api/market/${encodeURIComponent(selectedId)}/install`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({settings})}); const body=await r.json(); if(!r.ok) throw new Error(body.error||'Install failed.'); closeModal(); showMessage(`${body.name} ${body.version} installed on port ${body.port}.`,true); await loadMarket(); }
+    catch(e){ showMessage(e.message,false); }
+    finally { btn.disabled=false; btn.textContent='Install'; }
+}
+function showMessage(text,ok){ const m=document.getElementById('message'); m.textContent=text; m.className=`rounded-xl border p-4 text-sm ${ok?'border-emerald-500/30 bg-emerald-500/10 text-emerald-300':'border-rose-500/30 bg-rose-500/10 text-rose-300'}`; }
+loadMarket();
+</script>
+}
