@@ -90,9 +90,6 @@ jobs:
           docker run --rm \
             --platform linux/arm64 \
             -v "$GITHUB_WORKSPACE:/workspace:ro" \
-            -e TERMUX_HOST_PACKAGE_FILE=/workspace/dist/termux-host-aarch64.zip \
-            -e TERMUX_HOST_VERSION=${{ steps.version.outputs.install_version }} \
-            -e TERMUX_HOST_PORT=5050 \
             termux/termux-docker:aarch64 \
             bash -lc '
               set -euxo pipefail
@@ -104,13 +101,19 @@ jobs:
               echo "== Validate installer syntax =="
               bash -n /workspace/install.sh
 
-              echo "== Run real installer using published ZIP =="
+              echo "== Verify local release ZIP =="
+              test -f /workspace/dist/termux-host-aarch64.zip
+
+              echo "== Run real installer using local published ZIP =="
+              TERMUX_HOST_PACKAGE_FILE=/workspace/dist/termux-host-aarch64.zip \
+              TERMUX_HOST_VERSION=${{ steps.version.outputs.install_version }} \
+              TERMUX_HOST_PORT=5050 \
               bash /workspace/install.sh
 
               echo "== Verify installed release =="
               test -L "$HOME/termux-host/current"
               test -f "$HOME/termux-host/current/TermuxHost.dll"
-              test "$(cat "$HOME/termux-host/current/VERSION")" = "$TERMUX_HOST_VERSION"
+              test "$(cat "$HOME/termux-host/current/VERSION")" = "${{ steps.version.outputs.install_version }}"
               test -x "$PREFIX/var/service/termux-host/run"
 
               echo "== Start generated hosting service script =="
