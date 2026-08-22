@@ -28,23 +28,33 @@ jobs:
         run: dotnet build --configuration Release --no-restore
 
   termux-build:
-    name: Termux install and smoke test
+    name: Termux aarch64 install and smoke test
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Pull Termux container
-        run: docker pull termux/termux-docker:x86_64
+      - name: Setup QEMU for ARM64
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
 
-      - name: Run installer and curl hosting UI
+      - name: Pull Termux aarch64 container
+        run: docker pull --platform linux/arm64 termux/termux-docker:aarch64
+
+      - name: Run installer and curl hosting UI on aarch64
         run: |
           docker run --rm \
+            --platform linux/arm64 \
             -v "$GITHUB_WORKSPACE:/workspace:ro" \
-            termux/termux-docker:x86_64 \
+            termux/termux-docker:aarch64 \
             bash -lc '
               set -euxo pipefail
+
+              echo "== Verify ARM64 environment =="
+              test "$(uname -m)" = "aarch64"
+              uname -a
 
               echo "== Validate installer syntax =="
               bash -n /workspace/install.sh
@@ -64,7 +74,7 @@ jobs:
               trap "kill $APP_PID 2>/dev/null || true" EXIT
 
               echo "== Wait for HTTP endpoint =="
-              for attempt in $(seq 1 30); do
+              for attempt in $(seq 1 60); do
                 if curl --fail --silent --show-error http://127.0.0.1:5050/ > "$HOME/termux-host-response.html"; then
                   break
                 fi
