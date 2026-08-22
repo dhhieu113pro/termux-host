@@ -1,3 +1,4 @@
+using System.Text.Json;
 using TermuxHost.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,6 +22,37 @@ app.MapPost("/api/shell", async (ShellRequest request, ShellService shell, Cance
 
     var result = await shell.ExecuteAsync(request.Command, cancellationToken);
     return Results.Ok(result);
+});
+
+app.MapGet("/api/shell/stream", async (HttpContext context, string command, ShellService shell) =>
+{
+    if (string.IsNullOrWhiteSpace(command))
+    {
+        context.Response.StatusCode = StatusCodes.Status400BadRequest;
+        await context.Response.WriteAsync("Command is required.");
+        return;
+    }
+
+    context.Response.StatusCode = StatusCodes.Status200OK;
+    context.Response.ContentType = "text/event-stream";
+    context.Response.Headers.CacheControl = "no-cache, no-transform";
+    context.Response.Headers.Connection = "keep-alive";
+    context.Response.Headers["X-Accel-Buffering"] = "no";
+
+    try
+    {
+        await foreach (var item in shell.StreamAsync(command, context.RequestAborted))
+        {
+            var json = JsonSerializer.Serialize(item);
+            await context.Response.WriteAsync($"event: {item.Type}\n", context.RequestAborted);
+            await context.Response.WriteAsync($"data: {json}\n\n", context.RequestAborted);
+            await context.Response.Body.FlushAsync(context.RequestAborted);
+        }
+    }
+    catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+    {
+        // Browser disconnected or command was cancelled by the client.
+    }
 });
 
 app.MapGet("/api/system", async (ShellService shell, CancellationToken cancellationToken) =>
