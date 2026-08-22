@@ -41,8 +41,7 @@ jobs:
       - name: Test .NET 10 inside Termux
         run: |
           docker run --rm \
-            -v "$GITHUB_WORKSPACE:/workspace" \
-            -w /workspace \
+            -v "$GITHUB_WORKSPACE:/workspace:ro" \
             termux/termux-docker:x86_64 \
             bash -lc '
               set -euxo pipefail
@@ -55,6 +54,12 @@ jobs:
               echo "PREFIX=$PREFIX"
               echo "HOME=$HOME"
 
+              echo "== Copy source to writable Termux home =="
+              rm -rf "$HOME/termux-host"
+              mkdir -p "$HOME/termux-host"
+              cp -a /workspace/. "$HOME/termux-host/"
+              cd "$HOME/termux-host"
+
               echo "== .NET =="
               dotnet --info
 
@@ -65,16 +70,11 @@ jobs:
               dotnet build --configuration Release --no-restore
 
               echo "== Publish =="
-              dotnet publish --configuration Release --no-build --output /tmp/termux-host-publish
+              dotnet publish --configuration Release --no-build --output "$HOME/termux-host-publish"
 
-              test -f /tmp/termux-host-publish/TermuxHost.dll || \
-                test -f /tmp/termux-host-publish/TermuxHost.Web.dll
+              test -f "$HOME/termux-host-publish/TermuxHost.dll" || \
+                test -f "$HOME/termux-host-publish/TermuxHost.Web.dll"
+
+              echo "== Validate installer =="
+              bash -n install.sh
             '
-
-      - name: Validate installer shell syntax
-        run: |
-          docker run --rm \
-            -v "$GITHUB_WORKSPACE:/workspace" \
-            -w /workspace \
-            termux/termux-docker:x86_64 \
-            bash -n install.sh
