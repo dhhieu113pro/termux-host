@@ -22,7 +22,7 @@
             <span class="font-mono text-emerald-400">$</span>
             <input id="command" autocomplete="off" autofocus
                    class="min-w-0 flex-1 bg-transparent font-mono text-sm text-slate-100 outline-none placeholder:text-slate-600"
-                   placeholder="ping -c 4 127.0.0.1" />
+                   placeholder="dotnet --info" />
             <button class="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950">Run</button>
         </form>
     </div>
@@ -38,9 +38,37 @@ const output = document.getElementById('output');
 const cancelButton = document.getElementById('cancel');
 const statusDot = document.getElementById('status-dot');
 const statusText = document.getElementById('status-text');
-const history = [];
-let historyIndex = 0;
+const HISTORY_KEY = 'termuxhost.terminal.history';
+const HISTORY_LIMIT = 100;
+const history = loadHistory();
+let historyIndex = history.length;
 let controller = null;
+
+function loadHistory() {
+    try {
+        const value = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+        return Array.isArray(value) ? value.filter(x => typeof x === 'string').slice(-HISTORY_LIMIT) : [];
+    } catch {
+        return [];
+    }
+}
+
+function saveHistory() {
+    try {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(-HISTORY_LIMIT)));
+    } catch {
+        // Terminal still works if storage is unavailable.
+    }
+}
+
+function addHistory(command) {
+    if (history[history.length - 1] !== command) {
+        history.push(command);
+        if (history.length > HISTORY_LIMIT) history.shift();
+        saveHistory();
+    }
+    historyIndex = history.length;
+}
 
 function append(text) {
     output.textContent += text;
@@ -134,8 +162,7 @@ form.addEventListener('submit', async (event) => {
     const command = input.value.trim();
     if (!command || controller) return;
 
-    history.push(command);
-    historyIndex = history.length;
+    addHistory(command);
     append(`$ ${command}\n`);
     input.value = '';
 
@@ -163,11 +190,13 @@ input.addEventListener('keydown', (event) => {
         event.preventDefault();
         historyIndex = Math.max(0, historyIndex - 1);
         input.value = history[historyIndex];
+        input.setSelectionRange(input.value.length, input.value.length);
     }
     if (event.key === 'ArrowDown' && history.length) {
         event.preventDefault();
         historyIndex = Math.min(history.length, historyIndex + 1);
         input.value = historyIndex === history.length ? '' : history[historyIndex];
+        input.setSelectionRange(input.value.length, input.value.length);
     }
 });
 </script>
