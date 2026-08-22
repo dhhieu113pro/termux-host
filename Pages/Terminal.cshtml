@@ -1,0 +1,82 @@
+@page
+@{
+    ViewData["Title"] = "Terminal";
+}
+
+<section class="space-y-4">
+    <div class="rounded-2xl border border-slate-800 bg-black p-3 shadow-2xl">
+        <div id="output" class="h-[55vh] overflow-auto whitespace-pre-wrap break-words font-mono text-sm leading-6 text-emerald-300">TermuxHost shell\nType a command below.\n\n</div>
+
+        <form id="shell-form" class="mt-3 flex items-center gap-2 border-t border-slate-800 pt-3">
+            <span class="font-mono text-emerald-400">$</span>
+            <input id="command" autocomplete="off" autofocus
+                   class="min-w-0 flex-1 bg-transparent font-mono text-sm text-slate-100 outline-none placeholder:text-slate-600"
+                   placeholder="dotnet --info" />
+            <button class="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950">Run</button>
+        </form>
+    </div>
+
+    <p class="text-xs text-amber-300">This V1 intentionally allows arbitrary shell commands. Keep TermuxHost on a trusted LAN until authentication is added.</p>
+</section>
+
+@section Scripts {
+<script>
+const form = document.getElementById('shell-form');
+const input = document.getElementById('command');
+const output = document.getElementById('output');
+const history = [];
+let historyIndex = 0;
+
+function append(text) {
+    output.textContent += text;
+    output.scrollTop = output.scrollHeight;
+}
+
+form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const command = input.value.trim();
+    if (!command) return;
+
+    history.push(command);
+    historyIndex = history.length;
+    append(`$ ${command}\n`);
+    input.value = '';
+    input.disabled = true;
+
+    try {
+        const response = await fetch('/api/shell', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ command })
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+            append(`${result.error || 'Command failed'}\n`);
+        } else {
+            if (result.stdOut) append(result.stdOut);
+            if (result.stdErr) append(result.stdErr);
+            append(`[exit ${result.exitCode}]\n\n`);
+        }
+    } catch (error) {
+        append(`Request failed: ${error}\n\n`);
+    } finally {
+        input.disabled = false;
+        input.focus();
+    }
+});
+
+input.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowUp' && history.length) {
+        event.preventDefault();
+        historyIndex = Math.max(0, historyIndex - 1);
+        input.value = history[historyIndex];
+    }
+    if (event.key === 'ArrowDown' && history.length) {
+        event.preventDefault();
+        historyIndex = Math.min(history.length, historyIndex + 1);
+        input.value = historyIndex === history.length ? '' : history[historyIndex];
+    }
+});
+</script>
+}
