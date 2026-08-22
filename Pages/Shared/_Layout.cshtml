@@ -4,12 +4,15 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>@ViewData["Title"] - TermuxHost</title>
+    <link rel="icon" href="/images/termuxhost-logo.svg" type="image/svg+xml" />
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="min-h-full bg-slate-950 text-slate-100">
     <div class="min-h-screen md:flex">
         <aside class="hidden w-64 shrink-0 border-r border-slate-800 bg-slate-900/80 p-5 md:block">
-            <a href="/" class="mb-8 block text-xl font-bold tracking-tight">TermuxHost</a>
+            <a href="/" class="mb-8 block">
+                <img src="/images/termuxhost-logo.svg" alt="TermuxHost" class="h-auto w-full rounded-xl" />
+            </a>
             <nav class="space-y-2 text-sm">
                 <a href="/" class="block rounded-lg px-3 py-2 hover:bg-slate-800">Dashboard</a>
                 <a href="/Applications" class="block rounded-lg px-3 py-2 hover:bg-slate-800">Applications</a>
@@ -23,9 +26,12 @@
         <div class="min-w-0 flex-1">
             <header class="sticky top-0 z-20 border-b border-slate-800 bg-slate-950/90 px-4 py-4 backdrop-blur md:px-8">
                 <div class="mx-auto flex max-w-7xl items-center justify-between">
-                    <div>
-                        <p class="text-xs uppercase tracking-[0.2em] text-emerald-400">Termux hosting</p>
-                        <h1 class="text-lg font-semibold">@ViewData["Title"]</h1>
+                    <div class="flex items-center gap-3">
+                        <img src="/images/termuxhost-logo.svg" alt="" class="h-10 w-28 rounded-lg object-cover object-left md:hidden" />
+                        <div>
+                            <p class="text-xs uppercase tracking-[0.2em] text-emerald-400">Termux hosting</p>
+                            <h1 class="text-lg font-semibold">@ViewData["Title"]</h1>
+                        </div>
                     </div>
                     <span class="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">LAN</span>
                 </div>
