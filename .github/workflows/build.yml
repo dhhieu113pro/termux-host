@@ -28,7 +28,7 @@ jobs:
         run: dotnet build --configuration Release --no-restore
 
   termux-build:
-    name: Termux container
+    name: Termux install and smoke test
     runs-on: ubuntu-latest
 
     steps:
@@ -38,7 +38,7 @@ jobs:
       - name: Pull Termux container
         run: docker pull termux/termux-docker:x86_64
 
-      - name: Test .NET 10 inside Termux
+      - name: Run installer and curl hosting UI
         run: |
           docker run --rm \
             -v "$GITHUB_WORKSPACE:/workspace:ro" \
@@ -46,35 +46,45 @@ jobs:
             bash -lc '
               set -euxo pipefail
 
-              pkg update -y
-              pkg install -y dotnet-sdk-10.0 git
+              echo "== Validate installer syntax =="
+              bash -n /workspace/install.sh
 
-              echo "== Termux environment =="
-              uname -a
-              echo "PREFIX=$PREFIX"
-              echo "HOME=$HOME"
+              echo "== Run real installer against checked-out source =="
+              TERMUX_HOST_SOURCE_DIR=/workspace \
+              TERMUX_HOST_PORT=5050 \
+              bash /workspace/install.sh
 
-              echo "== Copy source to writable Termux home =="
-              rm -rf "$HOME/termux-host"
-              mkdir -p "$HOME/termux-host"
-              cp -a /workspace/. "$HOME/termux-host/"
-              cd "$HOME/termux-host"
+              echo "== Verify generated service =="
+              test -x "$PREFIX/var/service/termux-host/run"
+              test -f "$HOME/termux-host/publish/TermuxHost.dll"
 
-              echo "== .NET =="
-              dotnet --info
+              echo "== Start generated hosting service script =="
+              "$PREFIX/var/service/termux-host/run" > "$HOME/termux-host-ci.log" 2>&1 &
+              APP_PID=$!
+              trap "kill $APP_PID 2>/dev/null || true" EXIT
 
-              echo "== Restore =="
-              dotnet restore
+              echo "== Wait for HTTP endpoint =="
+              for attempt in $(seq 1 30); do
+                if curl --fail --silent --show-error http://127.0.0.1:5050/ > "$HOME/termux-host-response.html"; then
+                  break
+                fi
 
-              echo "== Build =="
-              dotnet build --configuration Release --no-restore
+                if ! kill -0 "$APP_PID" 2>/dev/null; then
+                  echo "TermuxHost exited before becoming ready"
+                  cat "$HOME/termux-host-ci.log"
+                  exit 1
+                fi
 
-              echo "== Publish =="
-              dotnet publish --configuration Release --no-build --output "$HOME/termux-host-publish"
+                sleep 1
+              done
 
-              test -f "$HOME/termux-host-publish/TermuxHost.dll" || \
-                test -f "$HOME/termux-host-publish/TermuxHost.Web.dll"
+              echo "== Assert HTTP response =="
+              curl --fail --silent --show-error http://127.0.0.1:5050/ | tee "$HOME/termux-host-response.html"
+              test -s "$HOME/termux-host-response.html"
 
-              echo "== Validate installer =="
-              bash -n install.sh
+              echo "== Process still running =="
+              kill -0 "$APP_PID"
+
+              echo "== TermuxHost logs =="
+              cat "$HOME/termux-host-ci.log"
             '
