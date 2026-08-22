@@ -4,6 +4,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorPages();
 builder.Services.AddSingleton<ShellService>();
+builder.Services.AddSingleton<NgrokService>();
 
 var app = builder.Build();
 
@@ -39,6 +40,32 @@ app.MapGet("/api/system", async (ShellService shell, CancellationToken cancellat
     });
 });
 
+app.MapGet("/api/ngrok/status", async (NgrokService ngrok, CancellationToken cancellationToken) =>
+    Results.Ok(await ngrok.GetStatusAsync(cancellationToken)));
+
+app.MapPost("/api/ngrok/token", async (NgrokTokenRequest request, NgrokService ngrok, CancellationToken cancellationToken) =>
+{
+    var result = await ngrok.SetTokenAsync(request.Token, cancellationToken);
+    return result.Success ? Results.Ok(result) : Results.BadRequest(result);
+});
+
+app.MapPost("/api/ngrok/start", async (NgrokStartRequest request, NgrokService ngrok, CancellationToken cancellationToken) =>
+{
+    var result = await ngrok.StartAsync(request.Port, cancellationToken);
+    return result.Success ? Results.Ok(result) : Results.BadRequest(result);
+});
+
+app.MapPost("/api/ngrok/stop", async (NgrokService ngrok, CancellationToken cancellationToken) =>
+{
+    var result = await ngrok.StopAsync(cancellationToken);
+    return result.Success ? Results.Ok(result) : Results.BadRequest(result);
+});
+
+app.MapGet("/api/ngrok/logs", async (int? lines, NgrokService ngrok, CancellationToken cancellationToken) =>
+    Results.Text(await ngrok.GetLogsAsync(lines ?? 100, cancellationToken), "text/plain"));
+
 app.Run();
 
 public sealed record ShellRequest(string Command);
+public sealed record NgrokTokenRequest(string Token);
+public sealed record NgrokStartRequest(int Port);
