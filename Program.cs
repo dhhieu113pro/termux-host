@@ -8,6 +8,7 @@ builder.Services.AddSingleton<ShellService>();
 builder.Services.AddSingleton<NgrokService>();
 builder.Services.AddSingleton<ApplicationService>();
 builder.Services.AddSingleton<MarketService>();
+builder.Services.AddHostedService<StartupService>();
 
 var app = builder.Build();
 
