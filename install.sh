@@ -14,17 +14,31 @@ ASSET_NAME="termux-host-aarch64.zip"
 NGROK_URL="https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-arm64.tgz"
 
 export DEBIAN_FRONTEND=noninteractive
+export APT_LISTCHANGES_FRONTEND=none
+export NEEDRESTART_MODE=a
+export UCF_FORCE_CONFFOLD=1
 APT_OPTIONS=(
   -o Dpkg::Options::=--force-confold
   -o Dpkg::Options::=--force-confdef
 )
 
+apt_noninteractive() {
+  # Feed Enter for any package prompt that ignores DEBIAN_FRONTEND/-y.
+  # pipefail is temporarily disabled because `yes` normally receives SIGPIPE
+  # once apt exits successfully.
+  set +o pipefail
+  yes '' | apt-get "${APT_OPTIONS[@]}" "$@"
+  local apt_status=${PIPESTATUS[1]}
+  set -o pipefail
+  return "$apt_status"
+}
+
 echo "==> Updating Termux packages"
-apt-get "${APT_OPTIONS[@]}" update
-apt-get "${APT_OPTIONS[@]}" -y upgrade
+apt_noninteractive update
+apt_noninteractive -y upgrade
 
 echo "==> Installing dependencies"
-apt-get "${APT_OPTIONS[@]}" install -y \
+apt_noninteractive install -y \
   dotnet-sdk-10.0 \
   git \
   gh \
