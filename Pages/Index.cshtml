@@ -1,0 +1,69 @@
+@page
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<section class="space-y-6">
+    <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+            <p class="text-xs text-slate-400">Host</p>
+            <p id="hostname" class="mt-2 truncate font-semibold">Loading…</p>
+        </div>
+        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+            <p class="text-xs text-slate-400">LAN IP</p>
+            <p id="ip" class="mt-2 truncate font-semibold">Loading…</p>
+        </div>
+        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+            <p class="text-xs text-slate-400">.NET SDK</p>
+            <p id="dotnet" class="mt-2 truncate font-semibold">Loading…</p>
+        </div>
+        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+            <p class="text-xs text-slate-400">Git</p>
+            <p id="git" class="mt-2 truncate font-semibold">Loading…</p>
+        </div>
+    </div>
+
+    <div class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+        <div class="flex items-center justify-between gap-4">
+            <div>
+                <h2 class="font-semibold">Applications</h2>
+                <p class="mt-1 text-sm text-slate-400">ASP.NET Core applications hosted on this Termux device.</p>
+            </div>
+            <button class="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 opacity-50" disabled>+ New app</button>
+        </div>
+
+        <div class="mt-5 rounded-xl border border-dashed border-slate-700 p-8 text-center">
+            <p class="font-medium">No applications yet</p>
+            <p class="mt-2 text-sm text-slate-400">App deployment and sv service management are the next milestone.</p>
+        </div>
+    </div>
+
+    <div class="grid gap-4 lg:grid-cols-2">
+        <a href="/Terminal" class="rounded-2xl border border-slate-800 bg-slate-900 p-5 transition hover:border-emerald-500/50">
+            <p class="text-sm text-emerald-400">Shell</p>
+            <h2 class="mt-1 text-lg font-semibold">Open Termux terminal</h2>
+            <p class="mt-2 text-sm text-slate-400">Run Bash commands directly from the browser.</p>
+        </a>
+
+        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+            <p class="text-sm text-sky-400">Uptime</p>
+            <p id="uptime" class="mt-2 text-sm text-slate-300">Loading…</p>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+<script>
+(async () => {
+    try {
+        const response = await fetch('/api/system');
+        const data = await response.json();
+        for (const key of ['hostname', 'ip', 'dotnet', 'git', 'uptime']) {
+            document.getElementById(key).textContent = data[key] || 'Unavailable';
+        }
+    } catch {
+        document.getElementById('hostname').textContent = 'Unavailable';
+    }
+})();
+</script>
+}
