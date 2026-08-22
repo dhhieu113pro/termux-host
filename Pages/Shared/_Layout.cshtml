@@ -12,9 +12,9 @@
             <a href="/" class="mb-8 block text-xl font-bold tracking-tight">TermuxHost</a>
             <nav class="space-y-2 text-sm">
                 <a href="/" class="block rounded-lg px-3 py-2 hover:bg-slate-800">Dashboard</a>
+                <a href="/Applications" class="block rounded-lg px-3 py-2 hover:bg-slate-800">Applications</a>
                 <a href="/Terminal" class="block rounded-lg px-3 py-2 hover:bg-slate-800">Terminal</a>
                 <a href="/Ngrok" class="block rounded-lg px-3 py-2 hover:bg-slate-800">ngrok</a>
-                <span class="block rounded-lg px-3 py-2 text-slate-500">Applications — coming next</span>
                 <span class="block rounded-lg px-3 py-2 text-slate-500">Files — coming next</span>
                 <span class="block rounded-lg px-3 py-2 text-slate-500">System — coming next</span>
             </nav>
@@ -39,9 +39,9 @@
 
     <nav class="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-slate-800 bg-slate-900/95 p-2 backdrop-blur md:hidden">
         <a href="/" class="rounded-lg px-2 py-2 text-center text-xs hover:bg-slate-800">Home</a>
+        <a href="/Applications" class="rounded-lg px-2 py-2 text-center text-xs hover:bg-slate-800">Apps</a>
         <a href="/Terminal" class="rounded-lg px-2 py-2 text-center text-xs hover:bg-slate-800">Terminal</a>
         <a href="/Ngrok" class="rounded-lg px-2 py-2 text-center text-xs hover:bg-slate-800">ngrok</a>
-        <button class="rounded-lg px-2 py-2 text-center text-xs text-slate-500" disabled>Apps</button>
     </nav>
 
     @await RenderSectionAsync("Scripts", required: false)
