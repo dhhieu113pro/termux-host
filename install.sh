@@ -23,9 +23,6 @@ APT_OPTIONS=(
 )
 
 apt_noninteractive() {
-  # Feed Enter for any package prompt that ignores DEBIAN_FRONTEND/-y.
-  # pipefail is temporarily disabled because `yes` normally receives SIGPIPE
-  # once apt exits successfully.
   set +o pipefail
   yes '' | apt-get "${APT_OPTIONS[@]}" "$@"
   local apt_status=${PIPESTATUS[1]}
@@ -109,6 +106,8 @@ unzip -q "$PACKAGE_FILE" -d "$RELEASE_DIR"
 test -f "$RELEASE_DIR/TermuxHost.dll"
 printf '%s\n' "$VERSION" > "$RELEASE_DIR/VERSION"
 
+# Stop the old host before switching the current release.
+sv down termux-host >/dev/null 2>&1 || true
 ln -sfn "$RELEASE_DIR" "$CURRENT_LINK"
 
 echo "==> Configuring runit service"
@@ -133,10 +132,30 @@ EOF
 
 chmod +x "$SERVICE_DIR/run" "$SERVICE_DIR/log/run"
 
+# Auto-start whenever the termux-services supervisor starts.
 sv-enable termux-host || true
 sv up termux-host || true
 
-IP="$(ip -4 addr show wlan0 2>/dev/null | awk '/inet / {print $2}' | cut -d/ -f1 | head -n1 || true)"
+# Termux:Boot support. The companion Termux:Boot app will execute this after
+# an Android reboot. It starts the termux-services supervisor; runit then
+# restores TermuxHost, auto-start apps, and the previously configured ngrok service.
+mkdir -p "$HOME/.termux/boot"
+cat > "$HOME/.termux/boot/termux-host-services" <<EOF
+#!/data/data/com.termux/files/usr/bin/sh
+export PREFIX="$PREFIX"
+export PATH="$PREFIX/bin:/system/bin:/system/xbin"
+if [ -f "$PREFIX/etc/profile.d/start-services.sh" ]; then
+  . "$PREFIX/etc/profile.d/start-services.sh"
+fi
+sleep 2
+sv up termux-host >/dev/null 2>&1 || true
+EOF
+chmod +x "$HOME/.termux/boot/termux-host-services"
+
+IP="$(ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src"){print $(i+1); exit}}' || true)"
+if [ -z "$IP" ]; then
+  IP="$(ip -4 addr 2>/dev/null | awk '/inet / && $2 !~ /^127\./ {split($2,a,"/"); print a[1]; exit}' || true)"
+fi
 
 echo
 echo "TermuxHost $VERSION installed."
@@ -147,7 +166,8 @@ if [ -n "$IP" ]; then
 fi
 echo "ngrok:   $(ngrok version 2>/dev/null || echo installed)"
 echo
-echo "Configure ngrok with: ngrok config add-authtoken <YOUR_TOKEN>"
-echo "Expose TermuxHost with: ngrok http $PORT"
+echo "Auto-start: TermuxHost and all apps with AutoStart enabled are restored by runit."
+echo "ngrok: A tunnel that has been started once is restored automatically."
+echo "Android reboot: install/open the Termux:Boot companion app once; the boot helper is already created."
 echo
 echo "If this is the first time installing termux-services, restart the Termux shell once so runit is initialized automatically."
