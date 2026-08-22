@@ -13,12 +13,18 @@ VERSION="${TERMUX_HOST_VERSION:-}"
 ASSET_NAME="termux-host-aarch64.zip"
 NGROK_URL="https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-arm64.tgz"
 
+export DEBIAN_FRONTEND=noninteractive
+APT_OPTIONS=(
+  -o Dpkg::Options::=--force-confold
+  -o Dpkg::Options::=--force-confdef
+)
+
 echo "==> Updating Termux packages"
-pkg update -y
-pkg upgrade -y
+apt-get "${APT_OPTIONS[@]}" update
+apt-get "${APT_OPTIONS[@]}" -y upgrade
 
 echo "==> Installing dependencies"
-pkg install -y \
+apt-get "${APT_OPTIONS[@]}" install -y \
   dotnet-sdk-10.0 \
   git \
   gh \
