@@ -39,11 +39,13 @@ app.MapGet("/api/shell/stream", async (HttpContext context, string command, Shel
     context.Response.Headers.Connection = "keep-alive";
     context.Response.Headers["X-Accel-Buffering"] = "no";
 
+    await context.Response.StartAsync(context.RequestAborted);
+
     try
     {
         await foreach (var item in shell.StreamAsync(command, context.RequestAborted))
         {
-            var json = JsonSerializer.Serialize(item);
+            var json = JsonSerializer.Serialize(new { data = item.Data });
             await context.Response.WriteAsync($"event: {item.Type}\n", context.RequestAborted);
             await context.Response.WriteAsync($"data: {json}\n\n", context.RequestAborted);
             await context.Response.Body.FlushAsync(context.RequestAborted);
