@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">TermuxHost showcase</title>
+  <desc id="desc">Promotional thumbnail showing a mobile and web hosting dashboard for ASP.NET Core apps on Termux.</desc>
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5cff63"/><stop offset="1" stop-color="#22d3ee"/></linearGradient>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#020617"/><stop offset="1" stop-color="#071827"/></linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <circle cx="1460" cy="110" r="220" fill="#0ea5e9" opacity=".06"/><circle cx="160" cy="800" r="280" fill="#22c55e" opacity=".05"/>
+  <g transform="translate(70 70)">
+    <rect x="0" y="0" width="102" height="160" rx="20" fill="#07111f" stroke="url(#g)" stroke-width="5"/>
+    <path d="M25 42l22 20-22 20M58 82h18" fill="none" stroke="#f8fafc" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="25" cy="110" r="5" fill="#22d3ee"/><circle cx="75" cy="110" r="5" fill="#5cff63"/><circle cx="25" cy="130" r="5" fill="#22d3ee"/><circle cx="75" cy="130" r="5" fill="#5cff63"/>
+    <text x="150" y="62" fill="#f8fafc" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="74" font-weight="700">Termux</text>
+    <text x="392" y="62" fill="url(#g)" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="74" font-weight="700">Host</text>
+    <text x="150" y="118" fill="#cbd5e1" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="34">Run and manage ASP.NET Core apps on Termux</text>
+    <g font-family="Inter,Segoe UI,Arial,sans-serif" font-size="19" font-weight="600">
+      <g transform="translate(150 150)"><rect width="118" height="42" rx="12" fill="#0f172a" stroke="#334155"/><text x="24" y="27" fill="#e2e8f0">Web UI</text></g>
+      <g transform="translate(282 150)"><rect width="102" height="42" rx="12" fill="#0f172a" stroke="#334155"/><text x="26" y="27" fill="#e2e8f0">Shell</text></g>
+      <g transform="translate(398 150)"><rect width="122" height="42" rx="12" fill="#0f172a" stroke="#334155"/><text x="22" y="27" fill="#e2e8f0">Services</text></g>
+      <g transform="translate(534 150)"><rect width="112" height="42" rx="12" fill="#0f172a" stroke="#334155"/><text x="24" y="27" fill="#e2e8f0">ngrok</text></g>
+      <g transform="translate(660 150)"><rect width="138" height="42" rx="12" fill="#0f172a" stroke="#334155"/><text x="20" y="27" fill="#e2e8f0">LAN Access</text></g>
+    </g>
+  </g>
+  <g transform="translate(70 330)" font-family="Inter,Segoe UI,Arial,sans-serif">
+    <g><rect width="520" height="92" rx="20" fill="#0b1220" stroke="#1e293b"/><rect x="18" y="18" width="56" height="56" rx="14" fill="#062b1b" stroke="#22c55e"/><text x="98" y="38" fill="#f8fafc" font-size="25" font-weight="700">Manage Your Apps</text><text x="98" y="67" fill="#94a3b8" font-size="18">Start, stop, restart and monitor hosted apps.</text></g>
+    <g transform="translate(0 108)"><rect width="520" height="92" rx="20" fill="#0b1220" stroke="#1e293b"/><rect x="18" y="18" width="56" height="56" rx="14" fill="#082f49" stroke="#22d3ee"/><text x="34" y="54" fill="#22d3ee" font-size="30">&gt;_</text><text x="98" y="38" fill="#f8fafc" font-size="25" font-weight="700">Built-in Shell</text><text x="98" y="67" fill="#94a3b8" font-size="18">Run Termux commands directly from the dashboard.</text></g>
+    <g transform="translate(0 216)"><rect width="520" height="92" rx="20" fill="#0b1220" stroke="#1e293b"/><rect x="18" y="18" width="56" height="56" rx="14" fill="#062b1b" stroke="#22c55e"/><text x="98" y="38" fill="#f8fafc" font-size="25" font-weight="700">Services &amp; ngrok</text><text x="98" y="67" fill="#94a3b8" font-size="18">Control runit services and expose apps securely.</text></g>
+    <g transform="translate(0 324)"><rect width="520" height="92" rx="20" fill="#0b1220" stroke="#1e293b"/><rect x="18" y="18" width="56" height="56" rx="14" fill="#082f49" stroke="#22d3ee"/><text x="98" y="38" fill="#f8fafc" font-size="25" font-weight="700">Mobile-first LAN Hosting</text><text x="98" y="67" fill="#94a3b8" font-size="18">Manage everything from your phone or browser.</text></g>
+  </g>
+  <g transform="translate(650 120)">
+    <rect width="870" height="650" rx="28" fill="#07111f" stroke="#334155" stroke-width="3"/>
+    <rect width="870" height="58" rx="28" fill="#0f172a"/><circle cx="28" cy="29" r="7" fill="#fb7185"/><circle cx="52" cy="29" r="7" fill="#fbbf24"/><circle cx="76" cy="29" r="7" fill="#4ade80"/><rect x="120" y="16" width="380" height="27" rx="13" fill="#111827"/><text x="145" y="35" fill="#64748b" font-family="monospace" font-size="15">http://localhost:5050</text>
+    <rect x="0" y="58" width="180" height="592" fill="#080f1b"/><text x="26" y="108" fill="#f8fafc" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="25" font-weight="700">Termux<tspan fill="#4ade80">Host</tspan></text>
+    <g fill="#94a3b8" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18"><text x="28" y="160">Overview</text><text x="28" y="205">Applications</text><text x="28" y="250">Terminal</text><text x="28" y="295">Services</text><text x="28" y="340">ngrok</text><text x="28" y="385">LAN Access</text></g>
+    <text x="215" y="105" fill="#f8fafc" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="30" font-weight="700">Overview</text>
+    <g font-family="Inter,Segoe UI,Arial,sans-serif"><g transform="translate(215 130)"><rect width="145" height="88" rx="16" fill="#0f172a" stroke="#1e293b"/><text x="18" y="30" fill="#94a3b8" font-size="15">Apps</text><text x="18" y="64" fill="#f8fafc" font-size="32" font-weight="700">3</text></g><g transform="translate(378 130)"><rect width="145" height="88" rx="16" fill="#0f172a" stroke="#1e293b"/><text x="18" y="30" fill="#94a3b8" font-size="15">Running</text><text x="18" y="64" fill="#f8fafc" font-size="32" font-weight="700">2</text><circle cx="115" cy="50" r="7" fill="#4ade80"/></g><g transform="translate(541 130)"><rect width="145" height="88" rx="16" fill="#0f172a" stroke="#1e293b"/><text x="18" y="30" fill="#94a3b8" font-size="15">Services</text><text x="18" y="64" fill="#f8fafc" font-size="32" font-weight="700">5</text></g><g transform="translate(704 130)"><rect width="135" height="88" rx="16" fill="#0f172a" stroke="#1e293b"/><text x="18" y="30" fill="#94a3b8" font-size="15">Uptime</text><text x="18" y="64" fill="#f8fafc" font-size="23" font-weight="700">2h 14m</text></g></g>
+    <g transform="translate(215 240)" font-family="Inter,Segoe UI,Arial,sans-serif"><rect width="395" height="295" rx="18" fill="#0b1220" stroke="#1e293b"/><text x="20" y="38" fill="#f8fafc" font-size="22" font-weight="700">Applications</text><text x="292" y="38" fill="#4ade80" font-size="16">+ Add App</text><g fill="#cbd5e1" font-size="17"><text x="20" y="86">MyWebApi</text><text x="20" y="142">BlogApp</text><text x="20" y="198">Dashboard</text></g><g fill="#4ade80" font-size="14"><text x="20" y="105">Running</text><text x="20" y="217">Running</text></g><text x="20" y="161" fill="#94a3b8" font-size="14">Stopped</text><g fill="#22d3ee" font-size="13"><text x="150" y="105">localhost:5000</text><text x="150" y="161">localhost:5001</text><text x="150" y="217">localhost:5002</text></g></g>
+    <g transform="translate(630 240)" font-family="monospace"><rect width="210" height="295" rx="18" fill="#050b13" stroke="#1e293b"/><text x="18" y="38" fill="#f8fafc" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="22" font-weight="700">Shell</text><text x="18" y="78" fill="#4ade80" font-size="15">$ whoami</text><text x="18" y="102" fill="#cbd5e1" font-size="14">u0_a123</text><text x="18" y="140" fill="#4ade80" font-size="15">$ dotnet --info</text><text x="18" y="168" fill="#22d3ee" font-size="13">.NET SDK 10</text><text x="18" y="196" fill="#94a3b8" font-size="13">OS: Android / Termux</text><text x="18" y="250" fill="#4ade80" font-size="15">$</text><rect x="36" y="238" width="8" height="18" fill="#4ade80"/></g>
+    <g transform="translate(215 555)" font-family="Inter,Segoe UI,Arial,sans-serif"><rect width="625" height="72" rx="16" fill="#0f172a" stroke="url(#g)"/><text x="22" y="43" fill="#e2e8f0" font-size="18">Lightweight &amp; Fast</text><text x="210" y="43" fill="#e2e8f0" font-size="18">Mobile Friendly</text><text x="395" y="43" fill="#e2e8f0" font-size="18">Open Source</text></g>
+  </g>
+</svg>
