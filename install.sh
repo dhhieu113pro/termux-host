@@ -2,7 +2,8 @@
 
 set -euo pipefail
 
-REPO_URL="https://github.com/dhhieu113pro/termux-host.git"
+REPO_URL="${TERMUX_HOST_REPO_URL:-https://github.com/dhhieu113pro/termux-host.git}"
+SOURCE_DIR="${TERMUX_HOST_SOURCE_DIR:-}"
 APP_ROOT="$HOME/termux-host"
 PUBLISH_DIR="$APP_ROOT/publish"
 SERVICE_DIR="$PREFIX/var/service/termux-host"
@@ -31,7 +32,16 @@ pkg install -y \
   zip
 
 echo "==> Preparing source"
-if [ -d "$APP_ROOT/.git" ]; then
+if [ -n "$SOURCE_DIR" ]; then
+  if [ ! -d "$SOURCE_DIR" ]; then
+    echo "Source directory does not exist: $SOURCE_DIR" >&2
+    exit 1
+  fi
+
+  rm -rf "$APP_ROOT"
+  mkdir -p "$APP_ROOT"
+  cp -a "$SOURCE_DIR"/. "$APP_ROOT"/
+elif [ -d "$APP_ROOT/.git" ]; then
   git -C "$APP_ROOT" pull --ff-only
 else
   rm -rf "$APP_ROOT"
