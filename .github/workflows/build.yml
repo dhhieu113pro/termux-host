@@ -3,9 +3,13 @@ name: build
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
     branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   dotnet-build:
@@ -27,13 +31,51 @@ jobs:
       - name: Build
         run: dotnet build --configuration Release --no-restore
 
-  termux-build:
-    name: Termux aarch64 install and smoke test
+  termux-package:
+    name: Package + Termux aarch64 smoke test
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Determine package version
+        id: version
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            INSTALL_VERSION="$GITHUB_REF_NAME"
+          else
+            VERSION="0.0.0-ci.${GITHUB_RUN_NUMBER}"
+            INSTALL_VERSION="ci-${GITHUB_SHA::7}"
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "install_version=$INSTALL_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Publish release package
+        run: |
+          rm -rf dist
+          mkdir -p dist/publish
+
+          dotnet publish TermuxHost.csproj \
+            --configuration Release \
+            --output dist/publish \
+            -p:Version=${{ steps.version.outputs.version }}
+
+          cd dist/publish
+          zip -r ../termux-host-aarch64.zip .
+
+      - name: Verify package contents
+        run: |
+          unzip -l dist/termux-host-aarch64.zip
+          unzip -Z1 dist/termux-host-aarch64.zip | grep -Fx TermuxHost.dll
 
       - name: Setup QEMU for ARM64
         uses: docker/setup-qemu-action@v3
@@ -43,11 +85,14 @@ jobs:
       - name: Pull Termux aarch64 container
         run: docker pull --platform linux/arm64 termux/termux-docker:aarch64
 
-      - name: Run installer and curl hosting UI on aarch64
+      - name: Install ZIP and curl hosting UI on aarch64
         run: |
           docker run --rm \
             --platform linux/arm64 \
             -v "$GITHUB_WORKSPACE:/workspace:ro" \
+            -e TERMUX_HOST_PACKAGE_FILE=/workspace/dist/termux-host-aarch64.zip \
+            -e TERMUX_HOST_VERSION=${{ steps.version.outputs.install_version }} \
+            -e TERMUX_HOST_PORT=5050 \
             termux/termux-docker:aarch64 \
             bash -lc '
               set -euxo pipefail
@@ -59,14 +104,14 @@ jobs:
               echo "== Validate installer syntax =="
               bash -n /workspace/install.sh
 
-              echo "== Run real installer against checked-out source =="
-              TERMUX_HOST_SOURCE_DIR=/workspace \
-              TERMUX_HOST_PORT=5050 \
+              echo "== Run real installer using published ZIP =="
               bash /workspace/install.sh
 
-              echo "== Verify generated service =="
+              echo "== Verify installed release =="
+              test -L "$HOME/termux-host/current"
+              test -f "$HOME/termux-host/current/TermuxHost.dll"
+              test "$(cat "$HOME/termux-host/current/VERSION")" = "$TERMUX_HOST_VERSION"
               test -x "$PREFIX/var/service/termux-host/run"
-              test -f "$HOME/termux-host/publish/TermuxHost.dll"
 
               echo "== Start generated hosting service script =="
               "$PREFIX/var/service/termux-host/run" > "$HOME/termux-host-ci.log" 2>&1 &
@@ -74,8 +119,10 @@ jobs:
               trap "kill $APP_PID 2>/dev/null || true" EXIT
 
               echo "== Wait for HTTP endpoint =="
-              for attempt in $(seq 1 60); do
+              READY=0
+              for attempt in $(seq 1 90); do
                 if curl --fail --silent --show-error http://127.0.0.1:5050/ > "$HOME/termux-host-response.html"; then
+                  READY=1
                   break
                 fi
 
@@ -88,6 +135,12 @@ jobs:
                 sleep 1
               done
 
+              if [ "$READY" != "1" ]; then
+                echo "TermuxHost did not become ready"
+                cat "$HOME/termux-host-ci.log"
+                exit 1
+              fi
+
               echo "== Assert HTTP response =="
               curl --fail --silent --show-error http://127.0.0.1:5050/ | tee "$HOME/termux-host-response.html"
               test -s "$HOME/termux-host-response.html"
@@ -98,3 +151,24 @@ jobs:
               echo "== TermuxHost logs =="
               cat "$HOME/termux-host-ci.log"
             '
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: termux-host-aarch64
+          path: dist/termux-host-aarch64.zip
+
+      - name: Publish GitHub Release asset
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist/termux-host-aarch64.zip --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              dist/termux-host-aarch64.zip \
+              --verify-tag \
+              --generate-notes \
+              --title "$GITHUB_REF_NAME"
+          fi
