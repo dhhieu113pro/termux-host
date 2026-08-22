@@ -11,6 +11,7 @@ PORT="${TERMUX_HOST_PORT:-5050}"
 PACKAGE_FILE="${TERMUX_HOST_PACKAGE_FILE:-}"
 VERSION="${TERMUX_HOST_VERSION:-}"
 ASSET_NAME="termux-host-aarch64.zip"
+NGROK_URL="https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-arm64.tgz"
 
 echo "==> Updating Termux packages"
 pkg update -y
@@ -32,7 +33,27 @@ pkg install -y \
   tmux \
   htop \
   unzip \
-  zip
+  zip \
+  tar
+
+echo "==> Installing ngrok"
+ARCH="$(uname -m)"
+case "$ARCH" in
+  aarch64|arm64)
+    NGROK_TMP="$(mktemp -d)"
+    trap 'rm -rf "$NGROK_TMP"' EXIT
+    curl -fL --retry 3 -o "$NGROK_TMP/ngrok.tgz" "$NGROK_URL"
+    tar -xzf "$NGROK_TMP/ngrok.tgz" -C "$NGROK_TMP"
+    install -m 755 "$NGROK_TMP/ngrok" "$PREFIX/bin/ngrok"
+    ngrok version
+    rm -rf "$NGROK_TMP"
+    trap - EXIT
+    ;;
+  *)
+    echo "Unsupported architecture for bundled ngrok installer: $ARCH" >&2
+    exit 1
+    ;;
+esac
 
 mkdir -p "$RELEASES_DIR"
 
@@ -104,5 +125,9 @@ echo "Local:   http://127.0.0.1:$PORT"
 if [ -n "$IP" ]; then
   echo "LAN:     http://$IP:$PORT"
 fi
+echo "ngrok:   $(ngrok version 2>/dev/null || echo installed)"
+echo
+echo "Configure ngrok with: ngrok config add-authtoken <YOUR_TOKEN>"
+echo "Expose TermuxHost with: ngrok http $PORT"
 echo
 echo "If this is the first time installing termux-services, restart the Termux shell once so runit is initialized automatically."
