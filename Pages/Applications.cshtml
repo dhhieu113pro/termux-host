@@ -1,0 +1,250 @@
+@page
+@{
+    ViewData["Title"] = "Applications";
+}
+
+<div class="space-y-6">
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 md:p-6">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h2 class="text-lg font-semibold">Hosted applications</h2>
+                <p class="mt-1 text-sm text-slate-400">Manage app ports, ASP.NET Core settings, secrets, and runit lifecycle.</p>
+            </div>
+            <button id="newApp" class="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-emerald-400">New app</button>
+        </div>
+        <div id="appList" class="mt-5 grid gap-3 lg:grid-cols-2"></div>
+    </section>
+
+    <section id="editor" class="hidden rounded-2xl border border-slate-800 bg-slate-900/70 p-4 md:p-6">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h2 id="editorTitle" class="text-lg font-semibold">Application settings</h2>
+                <p id="statusText" class="mt-1 text-sm text-slate-400">Not saved</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button data-action="start" class="lifecycle rounded-lg border border-slate-700 px-3 py-2 text-sm hover:bg-slate-800">Start</button>
+                <button data-action="restart" class="lifecycle rounded-lg border border-slate-700 px-3 py-2 text-sm hover:bg-slate-800">Restart</button>
+                <button data-action="stop" class="lifecycle rounded-lg border border-red-900/70 px-3 py-2 text-sm text-red-300 hover:bg-red-950/40">Stop</button>
+            </div>
+        </div>
+
+        <form id="appForm" class="mt-6 space-y-6">
+            <div class="grid gap-4 md:grid-cols-2">
+                <label class="block text-sm">App ID
+                    <input id="appId" required pattern="[a-z0-9][a-z0-9-]{0,63}" placeholder="aistudio" class="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-base outline-none focus:border-emerald-500" />
+                </label>
+                <label class="block text-sm">Name
+                    <input id="appName" required placeholder="AI Studio" class="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-base outline-none focus:border-emerald-500" />
+                </label>
+                <label class="block text-sm">Port
+                    <input id="appPort" type="number" min="1" max="65535" value="5000" required class="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-base outline-none focus:border-emerald-500" />
+                </label>
+                <label class="block text-sm">Startup DLL
+                    <input id="appDll" required placeholder="AIStudio.Api.dll" class="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-base outline-none focus:border-emerald-500" />
+                </label>
+                <label class="block text-sm md:col-span-2">Working directory
+                    <input id="appWorkingDirectory" required placeholder="/data/data/com.termux/files/home/hosting/apps/aistudio/current" class="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-base outline-none focus:border-emerald-500" />
+                </label>
+            </div>
+
+            <label class="flex items-center gap-3 text-sm">
+                <input id="autoStart" type="checkbox" checked class="h-5 w-5 rounded border-slate-600 bg-slate-950 text-emerald-500" />
+                Start automatically with termux-services
+            </label>
+
+            <div>
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <h3 class="font-medium">Environment variables</h3>
+                        <p class="text-sm text-slate-400">ASP.NET Core nested settings use double underscores, e.g. FeatureFlags__Enabled.</p>
+                    </div>
+                    <button id="addEnv" type="button" class="rounded-lg border border-slate-700 px-3 py-2 text-sm hover:bg-slate-800">Add</button>
+                </div>
+                <div id="envRows" class="mt-3 space-y-2"></div>
+            </div>
+
+            <div>
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <h3 class="font-medium">Secrets</h3>
+                        <p class="text-sm text-slate-400">Existing secret values are never sent back to the browser. Leave a value empty to keep it unchanged.</p>
+                    </div>
+                    <button id="addSecret" type="button" class="rounded-lg border border-slate-700 px-3 py-2 text-sm hover:bg-slate-800">Add</button>
+                </div>
+                <div id="secretRows" class="mt-3 space-y-2"></div>
+            </div>
+
+            <div id="message" class="hidden rounded-lg border px-3 py-2 text-sm"></div>
+
+            <div class="flex flex-wrap gap-2">
+                <button type="submit" data-restart="false" class="rounded-lg border border-emerald-600 px-4 py-2 text-sm text-emerald-300 hover:bg-emerald-950/40">Save</button>
+                <button type="submit" data-restart="true" class="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-emerald-400">Save &amp; Restart</button>
+            </div>
+        </form>
+    </section>
+</div>
+
+@section Scripts {
+<script>
+(() => {
+    const appList = document.getElementById('appList');
+    const editor = document.getElementById('editor');
+    const form = document.getElementById('appForm');
+    const appId = document.getElementById('appId');
+    const appName = document.getElementById('appName');
+    const appPort = document.getElementById('appPort');
+    const appDll = document.getElementById('appDll');
+    const appWorkingDirectory = document.getElementById('appWorkingDirectory');
+    const autoStart = document.getElementById('autoStart');
+    const envRows = document.getElementById('envRows');
+    const secretRows = document.getElementById('secretRows');
+    const statusText = document.getElementById('statusText');
+    const message = document.getElementById('message');
+    let selectedId = null;
+    let submitRestart = false;
+
+    const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
+
+    function showMessage(text, ok) {
+        message.textContent = text;
+        message.className = `rounded-lg border px-3 py-2 text-sm ${ok ? 'border-emerald-800 bg-emerald-950/30 text-emerald-300' : 'border-red-900 bg-red-950/30 text-red-300'}`;
+    }
+
+    function addRow(container, key = '', value = '', secret = false, existing = false) {
+        const row = document.createElement('div');
+        row.className = 'grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]';
+        row.dataset.existing = existing ? 'true' : 'false';
+        row.innerHTML = `
+            <input class="setting-key rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-base outline-none focus:border-emerald-500" placeholder="${secret ? 'OpenAI__ApiKey' : 'ASPNETCORE_ENVIRONMENT'}" value="${escapeHtml(key)}" ${existing && secret ? 'readonly' : ''} />
+            <input class="setting-value rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-base outline-none focus:border-emerald-500" ${secret ? 'type="password" autocomplete="new-password"' : ''} placeholder="${secret && existing ? 'Leave empty to keep existing' : 'Value'}" value="${secret ? '' : escapeHtml(value)}" />
+            <button type="button" class="remove-row min-h-11 rounded-lg border border-slate-700 px-3 text-sm text-red-300 hover:bg-red-950/30">Remove</button>`;
+        row.querySelector('.remove-row').addEventListener('click', () => {
+            if (secret && row.dataset.existing === 'true') {
+                row.dataset.remove = row.dataset.remove === 'true' ? 'false' : 'true';
+                row.classList.toggle('opacity-40', row.dataset.remove === 'true');
+                row.querySelector('.remove-row').textContent = row.dataset.remove === 'true' ? 'Undo' : 'Remove';
+            } else {
+                row.remove();
+            }
+        });
+        container.appendChild(row);
+    }
+
+    async function api(url, options = {}) {
+        const response = await fetch(url, options);
+        const contentType = response.headers.get('content-type') || '';
+        const body = contentType.includes('application/json') ? await response.json() : await response.text();
+        if (!response.ok) throw new Error(body?.error || body?.message || body || `HTTP ${response.status}`);
+        return body;
+    }
+
+    async function loadList() {
+        const apps = await api('/api/apps');
+        appList.innerHTML = '';
+        if (!apps.length) {
+            appList.innerHTML = '<div class="rounded-xl border border-dashed border-slate-700 p-5 text-sm text-slate-400">No applications configured yet.</div>';
+            return;
+        }
+        for (const app of apps) {
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'rounded-xl border border-slate-800 bg-slate-950/60 p-4 text-left hover:border-slate-700';
+            card.innerHTML = `<div class="flex items-start justify-between gap-4"><div><div class="font-medium">${escapeHtml(app.name)}</div><div class="mt-1 text-sm text-slate-400">${escapeHtml(app.dll)} · Port ${app.port}</div></div><span class="text-xs text-slate-400">${escapeHtml(app.status)}</span></div>`;
+            card.addEventListener('click', () => loadApp(app.id));
+            appList.appendChild(card);
+        }
+    }
+
+    async function loadApp(id) {
+        const app = await api(`/api/apps/${encodeURIComponent(id)}`);
+        selectedId = app.id;
+        editor.classList.remove('hidden');
+        appId.value = app.id;
+        appId.readOnly = true;
+        appName.value = app.name;
+        appPort.value = app.port;
+        appDll.value = app.dll;
+        appWorkingDirectory.value = app.workingDirectory;
+        autoStart.checked = app.autoStart;
+        statusText.textContent = app.status;
+        envRows.innerHTML = '';
+        secretRows.innerHTML = '';
+        Object.entries(app.environment || {}).forEach(([key, value]) => addRow(envRows, key, value, false, true));
+        (app.secretKeys || []).forEach(key => addRow(secretRows, key, '', true, true));
+        message.classList.add('hidden');
+        editor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    document.getElementById('newApp').addEventListener('click', () => {
+        selectedId = null;
+        editor.classList.remove('hidden');
+        form.reset();
+        appId.readOnly = false;
+        appPort.value = 5000;
+        autoStart.checked = true;
+        envRows.innerHTML = '';
+        secretRows.innerHTML = '';
+        addRow(envRows, 'ASPNETCORE_ENVIRONMENT', 'Production');
+        statusText.textContent = 'New application';
+        message.classList.add('hidden');
+        editor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    document.getElementById('addEnv').addEventListener('click', () => addRow(envRows));
+    document.getElementById('addSecret').addEventListener('click', () => addRow(secretRows, '', '', true));
+
+    form.querySelectorAll('button[type="submit"]').forEach(button => button.addEventListener('click', () => {
+        submitRestart = button.dataset.restart === 'true';
+    }));
+
+    form.addEventListener('submit', async event => {
+        event.preventDefault();
+        const environment = [...envRows.children].map(row => ({
+            key: row.querySelector('.setting-key').value.trim(),
+            value: row.querySelector('.setting-value').value
+        })).filter(x => x.key);
+        const secrets = [...secretRows.children].map(row => ({
+            key: row.querySelector('.setting-key').value.trim(),
+            value: row.querySelector('.setting-value').value,
+            remove: row.dataset.remove === 'true'
+        })).filter(x => x.key);
+        const payload = {
+            id: appId.value.trim(),
+            name: appName.value.trim(),
+            port: Number(appPort.value),
+            workingDirectory: appWorkingDirectory.value.trim(),
+            dll: appDll.value.trim(),
+            autoStart: autoStart.checked,
+            environment,
+            secrets
+        };
+        try {
+            const saved = await api(`/api/apps/${encodeURIComponent(payload.id)}?restart=${submitRestart}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            showMessage(submitRestart ? 'Saved and restart requested.' : 'Saved.', true);
+            await loadList();
+            await loadApp(saved.id);
+        } catch (error) {
+            showMessage(error.message, false);
+        }
+    });
+
+    document.querySelectorAll('.lifecycle').forEach(button => button.addEventListener('click', async () => {
+        if (!selectedId) return;
+        try {
+            const result = await api(`/api/apps/${encodeURIComponent(selectedId)}/${button.dataset.action}`, { method: 'POST' });
+            statusText.textContent = result.status || 'Command sent';
+            showMessage(`${button.dataset.action} command sent.`, true);
+            await loadList();
+        } catch (error) {
+            showMessage(error.message, false);
+        }
+    }));
+
+    loadList().catch(error => showMessage(error.message, false));
+})();
+</script>
+}
