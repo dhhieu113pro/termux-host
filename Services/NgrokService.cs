@@ -42,17 +42,22 @@ public sealed class NgrokService
         var runFile = Path.Combine(ServiceDir, "run");
         var logRunFile = Path.Combine(ServiceDir, "log", "run");
 
-        await File.WriteAllTextAsync(runFile, $"""#!/data/data/com.termux/files/usr/bin/sh
-export HOME="{Home}"
-export PREFIX="{Prefix}"
-export PATH="{Prefix}/bin:/system/bin:/system/xbin"
-exec ngrok http {port} --log=stdout 2>&1
-""", cancellationToken);
+        var runScript = string.Join('\n',
+            "#!/data/data/com.termux/files/usr/bin/sh",
+            $"export HOME=\"{Home}\"",
+            $"export PREFIX=\"{Prefix}\"",
+            $"export PATH=\"{Prefix}/bin:/system/bin:/system/xbin\"",
+            $"exec ngrok http {port} --log=stdout 2>&1",
+            string.Empty);
 
-        await File.WriteAllTextAsync(logRunFile, $"""#!/data/data/com.termux/files/usr/bin/sh
-mkdir -p "{LogDir}"
-exec svlogd -tt "{LogDir}"
-""", cancellationToken);
+        var logScript = string.Join('\n',
+            "#!/data/data/com.termux/files/usr/bin/sh",
+            $"mkdir -p \"{LogDir}\"",
+            $"exec svlogd -tt \"{LogDir}\"",
+            string.Empty);
+
+        await File.WriteAllTextAsync(runFile, runScript, cancellationToken);
+        await File.WriteAllTextAsync(logRunFile, logScript, cancellationToken);
 
         await RunAsync("/data/data/com.termux/files/usr/bin/chmod", ["+x", runFile, logRunFile], cancellationToken);
         await RunAsync(SvEnablePath, [ServiceName], cancellationToken, allowMissing: true);
