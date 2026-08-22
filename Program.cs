@@ -5,6 +5,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorPages();
 builder.Services.AddSingleton<ShellService>();
 builder.Services.AddSingleton<NgrokService>();
+builder.Services.AddSingleton<ApplicationService>();
 
 var app = builder.Build();
 
@@ -63,6 +64,55 @@ app.MapPost("/api/ngrok/stop", async (NgrokService ngrok, CancellationToken canc
 
 app.MapGet("/api/ngrok/logs", async (int? lines, NgrokService ngrok, CancellationToken cancellationToken) =>
     Results.Text(await ngrok.GetLogsAsync(lines ?? 100, cancellationToken), "text/plain"));
+
+app.MapGet("/api/apps", async (ApplicationService applications, CancellationToken cancellationToken) =>
+    Results.Ok(await applications.ListAsync(cancellationToken)));
+
+app.MapGet("/api/apps/{id}", async (string id, ApplicationService applications, CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var result = await applications.GetAsync(id, cancellationToken);
+        return result is null ? Results.NotFound() : Results.Ok(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+});
+
+app.MapPut("/api/apps/{id}", async (string id, bool? restart, ApplicationSaveRequest request, ApplicationService applications, CancellationToken cancellationToken) =>
+{
+    if (!string.Equals(id, request.Id, StringComparison.Ordinal))
+        return Results.BadRequest(new { error = "Route id must match application id." });
+
+    try
+    {
+        return Results.Ok(await applications.SaveAsync(request, restart ?? false, cancellationToken));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+});
+
+app.MapPost("/api/apps/{id}/start", async (string id, ApplicationService applications, CancellationToken cancellationToken) =>
+{
+    try { return Results.Ok(new { status = await applications.StartAsync(id, cancellationToken) }); }
+    catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
+});
+
+app.MapPost("/api/apps/{id}/stop", async (string id, ApplicationService applications, CancellationToken cancellationToken) =>
+{
+    try { return Results.Ok(new { status = await applications.StopAsync(id, cancellationToken) }); }
+    catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
+});
+
+app.MapPost("/api/apps/{id}/restart", async (string id, ApplicationService applications, CancellationToken cancellationToken) =>
+{
+    try { return Results.Ok(new { status = await applications.RestartAsync(id, cancellationToken) }); }
+    catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
+});
 
 app.Run();
 
