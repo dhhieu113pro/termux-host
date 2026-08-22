@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 260" role="img" aria-labelledby="title desc">
+  <title id="title">TermuxHost logo</title>
+  <desc id="desc">Phone terminal and hosting control logo for TermuxHost.</desc>
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5cff63"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="260" rx="34" fill="#020617"/>
+  <g transform="translate(48 28)" fill="none" stroke="url(#g)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="76" y="6" width="118" height="188" rx="24"/>
+    <path d="M99 50l27 25-27 25M139 100h24" stroke="#f8fafc"/>
+    <rect x="99" y="124" width="72" height="16" rx="8" fill="#0f172a" stroke="#1e293b"/>
+    <circle cx="113" cy="132" r="4" fill="#22d3ee" stroke="none"/>
+    <circle cx="159" cy="132" r="4" fill="#5cff63" stroke="none"/>
+    <rect x="99" y="150" width="72" height="16" rx="8" fill="#0f172a" stroke="#1e293b"/>
+    <circle cx="113" cy="158" r="4" fill="#22d3ee" stroke="none"/>
+    <circle cx="159" cy="158" r="4" fill="#5cff63" stroke="none"/>
+    <circle cx="31" cy="104" r="25"/>
+    <path d="M6 104h50M31 79c8 12 8 38 0 50M31 79c-8 12-8 38 0 50" stroke-width="4"/>
+    <path d="M217 82h54M217 108h54M217 134h54"/>
+    <circle cx="239" cy="82" r="7" fill="#020617"/>
+    <circle cx="252" cy="108" r="7" fill="#020617"/>
+    <circle cx="230" cy="134" r="7" fill="#020617"/>
+    <path d="M135 194v24h44M135 218H91" stroke-dasharray="5 10"/>
+  </g>
+  <text x="350" y="120" fill="#f8fafc" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="72" font-weight="700">Termux</text>
+  <text x="590" y="120" fill="url(#g)" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="72" font-weight="700">Host</text>
+  <text x="352" y="165" fill="#94a3b8" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="24">Host and manage ASP.NET Core apps on Termux</text>
+</svg>
