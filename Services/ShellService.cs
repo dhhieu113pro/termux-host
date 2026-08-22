@@ -10,20 +10,19 @@ public sealed class ShellService
     {
         var shell = File.Exists(TermuxShell) ? TermuxShell : "/bin/bash";
 
-        using var process = new Process
+        var startInfo = new ProcessStartInfo
         {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = shell,
-                Arguments = "-lc \"" + EscapeForDoubleQuotes(command) + "\"",
-                WorkingDirectory = Environment.GetEnvironmentVariable("HOME") ?? Directory.GetCurrentDirectory(),
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            }
+            FileName = shell,
+            WorkingDirectory = Environment.GetEnvironmentVariable("HOME") ?? Directory.GetCurrentDirectory(),
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
         };
+        startInfo.ArgumentList.Add("-lc");
+        startInfo.ArgumentList.Add(command);
 
+        using var process = new Process { StartInfo = startInfo };
         process.Start();
 
         var stdoutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
@@ -36,12 +35,6 @@ public sealed class ShellService
             await stdoutTask,
             await stderrTask);
     }
-
-    private static string EscapeForDoubleQuotes(string value) =>
-        value.Replace("\\", "\\\\")
-             .Replace("\"", "\\\"")
-             .Replace("$", "\\$")
-             .Replace("`", "\\`");
 }
 
 public sealed record ShellResult(int ExitCode, string StdOut, string StdErr);
