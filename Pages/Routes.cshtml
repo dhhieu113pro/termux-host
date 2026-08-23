@@ -7,16 +7,16 @@
     <section class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 md:p-6">
         <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">One tunnel, many apps</p>
         <h2 class="mt-1 text-2xl font-bold">Public Routes</h2>
-        <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-400">Expose TermuxHost itself through ngrok on port <span class="font-mono text-slate-200">5050</span>, then route prefixes to installed apps. The prefix is stripped before the request reaches your app.</p>
+        <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-400">Tunnel the isolated public gateway on <span class="font-mono text-slate-200">5051</span>. Your TermuxHost admin UI stays on <span class="font-mono text-slate-200">5050</span> and is not exposed by this gateway.</p>
         <div class="mt-4 rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-sm text-cyan-200">
-            Example: <span class="font-mono">https://your-host.ngrok.app/local-coding/mcp</span> → <span class="font-mono">127.0.0.1:5000/mcp</span>
+            Example: <span class="font-mono">https://your-host.ngrok.app/local-coding/mcp</span> → <span class="font-mono">127.0.0.1:5000/mcp</span>. The <span class="font-mono">/local-coding</span> prefix is stripped automatically.
         </div>
     </section>
 
     <section class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 md:p-6">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div><h3 class="text-lg font-semibold">Route an application</h3><p class="mt-1 text-sm text-slate-400">Each app can have one public prefix.</p></div>
-            <a href="/Ngrok" class="rounded-xl border border-slate-700 px-4 py-2 text-center text-sm hover:bg-slate-800">Configure ngrok → 5050</a>
+            <a href="/Ngrok" class="rounded-xl border border-slate-700 px-4 py-2 text-center text-sm hover:bg-slate-800">Configure ngrok → 5051</a>
         </div>
 
         <form id="routeForm" class="mt-5 grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
@@ -32,7 +32,7 @@
     </section>
 
     <section class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 md:p-6">
-        <div class="flex items-center justify-between gap-3"><div><h3 class="text-lg font-semibold">Configured routes</h3><p class="mt-1 text-sm text-slate-400">Requests are streamed through TermuxHost to the target app.</p></div><button onclick="loadAll()" class="rounded-xl border border-slate-700 px-4 py-2 text-sm hover:bg-slate-800">Refresh</button></div>
+        <div class="flex items-center justify-between gap-3"><div><h3 class="text-lg font-semibold">Configured routes</h3><p class="mt-1 text-sm text-slate-400">Requests are streamed through the 5051 gateway to the target app.</p></div><button onclick="loadAll()" class="rounded-xl border border-slate-700 px-4 py-2 text-sm hover:bg-slate-800">Refresh</button></div>
         <div id="routes" class="mt-5 space-y-3"></div>
     </section>
 </div>
@@ -49,11 +49,11 @@ async function loadAll(){
   select.innerHTML=apps.map(a=>`<option value="${esc(a.id)}">${esc(a.name)} · :${a.port}</option>`).join('');
   const routes=await json('/api/routes');
   const host=document.getElementById('routes');
-  host.innerHTML=routes.length?routes.map(r=>`<div class="rounded-xl border border-slate-800 bg-slate-950/60 p-4"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><div class="font-medium">${esc(r.appName)}</div><div class="mt-1 font-mono text-sm text-emerald-300">${esc(r.path)}/* → 127.0.0.1:${r.port}/*</div></div><div class="flex gap-2"><button onclick="editRoute('${esc(r.appId)}','${esc(r.path)}')" class="rounded-lg border border-slate-700 px-3 py-2 text-sm">Edit</button><button onclick="removeRoute('${esc(r.appId)}')" class="rounded-lg border border-rose-900/70 px-3 py-2 text-sm text-rose-300">Remove</button></div></div></div>`).join(''):'<div class="rounded-xl border border-dashed border-slate-700 p-5 text-sm text-slate-400">No public routes yet.</div>';
+  host.innerHTML=routes.length?routes.map(r=>`<div class="rounded-xl border border-slate-800 bg-slate-950/60 p-4"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><div class="font-medium">${esc(r.appName)}</div><div class="mt-1 font-mono text-sm text-emerald-300">:5051${esc(r.path)}/* → 127.0.0.1:${r.port}/*</div></div><div class="flex gap-2"><button onclick="editRoute('${esc(r.appId)}','${esc(r.path)}')" class="rounded-lg border border-slate-700 px-3 py-2 text-sm">Edit</button><button onclick="removeRoute('${esc(r.appId)}')" class="rounded-lg border border-rose-900/70 px-3 py-2 text-sm text-rose-300">Remove</button></div></div></div>`).join(''):'<div class="rounded-xl border border-dashed border-slate-700 p-5 text-sm text-slate-400">No public routes yet.</div>';
 }
 function editRoute(id,path){ document.getElementById('appId').value=id; document.getElementById('routePath').value=path; window.scrollTo({top:0,behavior:'smooth'}); }
 async function removeRoute(id){ try{await json(`/api/routes/${encodeURIComponent(id)}`,{method:'DELETE'}); msg('Route removed.',true); await loadAll();}catch(e){msg(e.message,false);} }
-document.getElementById('routeForm').addEventListener('submit',async e=>{e.preventDefault();const appId=document.getElementById('appId').value;const path=document.getElementById('routePath').value;try{const r=await json(`/api/routes/${encodeURIComponent(appId)}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({appId,path,enabled:true})});msg(`${r.path} now routes to ${r.appName} on port ${r.port}.`,true);await loadAll();}catch(err){msg(err.message,false);}});
+document.getElementById('routeForm').addEventListener('submit',async e=>{e.preventDefault();const appId=document.getElementById('appId').value;const path=document.getElementById('routePath').value;try{const r=await json(`/api/routes/${encodeURIComponent(appId)}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({appId,path,enabled:true})});msg(`${r.path} now routes to ${r.appName} on port ${r.port}. Start ngrok on port 5051.`,true);await loadAll();}catch(err){msg(err.message,false);}});
 loadAll().catch(e=>msg(e.message,false));
 </script>
 }
