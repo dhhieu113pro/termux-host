@@ -14,12 +14,25 @@ builder.Services.AddSingleton<ReverseProxyService>();
 builder.Services.AddHostedService<StartupService>();
 
 var app = builder.Build();
+var publicGatewayPort = int.TryParse(Environment.GetEnvironmentVariable("TERMUX_HOST_PUBLIC_PORT"), out var configuredPublicPort) ? configuredPublicPort : 5051;
 
 app.Use(async (context, next) =>
 {
+    if (context.Connection.LocalPort != publicGatewayPort)
+    {
+        await next();
+        return;
+    }
+
     var routes = context.RequestServices.GetRequiredService<PublicRouteService>();
     var route = await routes.ResolveAsync(context.Request.Path, context.RequestAborted);
-    if (route is null) { await next(); return; }
+    if (route is null)
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        await context.Response.WriteAsJsonAsync(new { error = "No public route configured for this path." }, context.RequestAborted);
+        return;
+    }
+
     var proxy = context.RequestServices.GetRequiredService<ReverseProxyService>();
     await proxy.ProxyAsync(context, route);
 });
@@ -62,7 +75,7 @@ app.MapGet("/api/system", async (ShellService shell, CancellationToken cancellat
     var git = await shell.ExecuteAsync("git --version", cancellationToken);
     var ip = await shell.ExecuteAsync("ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i==\"src\"){print $(i+1); exit}}' || true", cancellationToken);
     if (string.IsNullOrWhiteSpace(ip.StdOut)) ip = await shell.ExecuteAsync("ip -4 addr 2>/dev/null | awk '/inet / && $2 !~ /^127\\./ {split($2,a,\"/\"); print a[1]; exit}'", cancellationToken);
-    return Results.Ok(new { hostname = hostname.StdOut.Trim(), uptime = uptime.StdOut.Trim(), dotnet = dotnet.StdOut.Trim(), git = git.StdOut.Trim(), ip = ip.StdOut.Trim() });
+    return Results.Ok(new { hostname = hostname.StdOut.Trim(), uptime = uptime.StdOut.Trim(), dotnet = dotnet.StdOut.Trim(), git = git.StdOut.Trim(), ip = ip.StdOut.Trim(), publicGatewayPort });
 });
 
 app.MapGet("/api/ngrok/status", async (NgrokService ngrok, CancellationToken ct) => Results.Ok(await ngrok.GetStatusAsync(ct)));
