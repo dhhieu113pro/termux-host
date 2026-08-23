@@ -8,6 +8,7 @@ RELEASES_DIR="$APP_ROOT/releases"
 CURRENT_LINK="$APP_ROOT/current"
 SERVICE_DIR="$PREFIX/var/service/termux-host"
 PORT="${TERMUX_HOST_PORT:-5050}"
+PUBLIC_PORT="${TERMUX_HOST_PUBLIC_PORT:-5051}"
 PACKAGE_FILE="${TERMUX_HOST_PACKAGE_FILE:-}"
 VERSION="${TERMUX_HOST_VERSION:-}"
 ASSET_NAME="termux-host-aarch64.zip"
@@ -35,23 +36,7 @@ apt_noninteractive update
 apt_noninteractive -y upgrade
 
 echo "==> Installing dependencies"
-apt_noninteractive install -y \
-  dotnet-sdk-10.0 \
-  git \
-  gh \
-  termux-services \
-  openssh \
-  curl \
-  wget \
-  jq \
-  procps \
-  net-tools \
-  inetutils \
-  tmux \
-  htop \
-  unzip \
-  zip \
-  tar
+apt_noninteractive install -y dotnet-sdk-10.0 git gh termux-services openssh curl wget jq procps net-tools inetutils tmux htop unzip zip tar
 
 echo "==> Installing ngrok"
 ARCH="$(uname -m)"
@@ -66,10 +51,7 @@ case "$ARCH" in
     rm -rf "$NGROK_TMP"
     trap - EXIT
     ;;
-  *)
-    echo "Unsupported architecture for bundled ngrok installer: $ARCH" >&2
-    exit 1
-    ;;
+  *) echo "Unsupported architecture for bundled ngrok installer: $ARCH" >&2; exit 1 ;;
 esac
 
 mkdir -p "$RELEASES_DIR"
@@ -79,17 +61,8 @@ if [ -z "$PACKAGE_FILE" ]; then
   RELEASE_JSON="$(curl -fsSL -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/$REPO/releases/latest")"
   VERSION="${VERSION:-$(printf '%s' "$RELEASE_JSON" | jq -r '.tag_name')}"
   DOWNLOAD_URL="$(printf '%s' "$RELEASE_JSON" | jq -r --arg name "$ASSET_NAME" '.assets[] | select(.name == $name) | .browser_download_url' | head -n1)"
-
-  if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
-    echo "Unable to determine latest TermuxHost release." >&2
-    exit 1
-  fi
-
-  if [ -z "$DOWNLOAD_URL" ] || [ "$DOWNLOAD_URL" = "null" ]; then
-    echo "Release $VERSION does not contain $ASSET_NAME." >&2
-    exit 1
-  fi
-
+  if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then echo "Unable to determine latest TermuxHost release." >&2; exit 1; fi
+  if [ -z "$DOWNLOAD_URL" ] || [ "$DOWNLOAD_URL" = "null" ]; then echo "Release $VERSION does not contain $ASSET_NAME." >&2; exit 1; fi
   PACKAGE_FILE="$APP_ROOT/$ASSET_NAME"
   echo "==> Downloading TermuxHost $VERSION"
   curl -fL --retry 3 -o "$PACKAGE_FILE" "$DOWNLOAD_URL"
@@ -102,24 +75,22 @@ RELEASE_DIR="$RELEASES_DIR/$VERSION"
 rm -rf "$RELEASE_DIR"
 mkdir -p "$RELEASE_DIR"
 unzip -q "$PACKAGE_FILE" -d "$RELEASE_DIR"
-
 test -f "$RELEASE_DIR/TermuxHost.dll"
 printf '%s\n' "$VERSION" > "$RELEASE_DIR/VERSION"
 
-# Stop the old host before switching the current release.
 sv down termux-host >/dev/null 2>&1 || true
 ln -sfn "$RELEASE_DIR" "$CURRENT_LINK"
 
 echo "==> Configuring runit service"
 mkdir -p "$SERVICE_DIR/log"
-
 cat > "$SERVICE_DIR/run" <<EOF
 #!/data/data/com.termux/files/usr/bin/sh
 export HOME="$HOME"
 export PREFIX="$PREFIX"
 export PATH="$PREFIX/bin:/system/bin:/system/xbin"
 export ASPNETCORE_ENVIRONMENT="Production"
-export ASPNETCORE_URLS="http://0.0.0.0:$PORT"
+export TERMUX_HOST_PUBLIC_PORT="$PUBLIC_PORT"
+export ASPNETCORE_URLS="http://0.0.0.0:$PORT;http://0.0.0.0:$PUBLIC_PORT"
 cd "$CURRENT_LINK"
 exec dotnet TermuxHost.dll 2>&1
 EOF
@@ -129,43 +100,37 @@ cat > "$SERVICE_DIR/log/run" <<EOF
 mkdir -p "$APP_ROOT/logs"
 exec svlogd -tt "$APP_ROOT/logs"
 EOF
-
 chmod +x "$SERVICE_DIR/run" "$SERVICE_DIR/log/run"
-
-# Auto-start whenever the termux-services supervisor starts.
 sv-enable termux-host || true
 sv up termux-host || true
 
-# Termux:Boot support. The companion Termux:Boot app will execute this after
-# an Android reboot. It starts the termux-services supervisor; runit then
-# restores TermuxHost, auto-start apps, and the previously configured ngrok service.
 mkdir -p "$HOME/.termux/boot"
 cat > "$HOME/.termux/boot/termux-host-services" <<EOF
 #!/data/data/com.termux/files/usr/bin/sh
 export PREFIX="$PREFIX"
 export PATH="$PREFIX/bin:/system/bin:/system/xbin"
-if [ -f "$PREFIX/etc/profile.d/start-services.sh" ]; then
-  . "$PREFIX/etc/profile.d/start-services.sh"
-fi
+if [ -f "$PREFIX/etc/profile.d/start-services.sh" ]; then . "$PREFIX/etc/profile.d/start-services.sh"; fi
 sleep 2
 sv up termux-host >/dev/null 2>&1 || true
 EOF
 chmod +x "$HOME/.termux/boot/termux-host-services"
 
 IP="$(ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src"){print $(i+1); exit}}' || true)"
-if [ -z "$IP" ]; then
-  IP="$(ip -4 addr 2>/dev/null | awk '/inet / && $2 !~ /^127\./ {split($2,a,"/"); print a[1]; exit}' || true)"
-fi
+if [ -z "$IP" ]; then IP="$(ip -4 addr 2>/dev/null | awk '/inet / && $2 !~ /^127\./ {split($2,a,"/"); print a[1]; exit}' || true)"; fi
 
 echo
 echo "TermuxHost $VERSION installed."
 echo "Service: sv status termux-host"
-echo "Local:   http://127.0.0.1:$PORT"
+echo "Admin:   http://127.0.0.1:$PORT"
+echo "Gateway: http://127.0.0.1:$PUBLIC_PORT (public routes only)"
 if [ -n "$IP" ]; then
   echo "LAN:     http://$IP:$PORT"
+  echo "LAN gateway: http://$IP:$PUBLIC_PORT"
 fi
 echo "ngrok:   $(ngrok version 2>/dev/null || echo installed)"
 echo
+echo "For multiple public apps, configure Public Routes and tunnel gateway port $PUBLIC_PORT."
+echo "Example: ngrok http $PUBLIC_PORT"
 echo "Auto-start: TermuxHost and all apps with AutoStart enabled are restored by runit."
 echo "ngrok: A tunnel that has been started once is restored automatically."
 echo "Android reboot: install/open the Termux:Boot companion app once; the boot helper is already created."
