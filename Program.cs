@@ -9,9 +9,20 @@ builder.Services.AddSingleton<NgrokService>();
 builder.Services.AddSingleton<ApplicationService>();
 builder.Services.AddSingleton<MarketService>();
 builder.Services.AddSingleton<AppMonitoringService>();
+builder.Services.AddSingleton<PublicRouteService>();
+builder.Services.AddSingleton<ReverseProxyService>();
 builder.Services.AddHostedService<StartupService>();
 
 var app = builder.Build();
+
+app.Use(async (context, next) =>
+{
+    var routes = context.RequestServices.GetRequiredService<PublicRouteService>();
+    var route = await routes.ResolveAsync(context.Request.Path, context.RequestAborted);
+    if (route is null) { await next(); return; }
+    var proxy = context.RequestServices.GetRequiredService<ReverseProxyService>();
+    await proxy.ProxyAsync(context, route);
+});
 
 app.UseStaticFiles();
 app.MapRazorPages();
@@ -68,6 +79,14 @@ app.MapPost("/api/apps/{id}/stop", async (string id, ApplicationService applicat
 app.MapPost("/api/apps/{id}/restart", async (string id, ApplicationService applications, CancellationToken ct) => { try { return Results.Ok(new { status = await applications.RestartAsync(id, ct) }); } catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); } });
 app.MapGet("/api/apps/{id}/runtime", async (string id, AppMonitoringService monitoring, CancellationToken ct) => { try { return Results.Ok(await monitoring.GetAsync(id, ct)); } catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); } });
 app.MapGet("/api/apps/{id}/logs", async (string id, int? lines, AppMonitoringService monitoring, CancellationToken ct) => { try { return Results.Text(await monitoring.GetLogsAsync(id, lines ?? 200, ct), "text/plain"); } catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); } });
+
+app.MapGet("/api/routes", async (PublicRouteService routes, CancellationToken ct) => Results.Ok(await routes.ListAsync(ct)));
+app.MapPut("/api/routes/{appId}", async (string appId, PublicRouteSaveRequest request, PublicRouteService routes, CancellationToken ct) =>
+{
+    if (!string.Equals(appId, request.AppId, StringComparison.Ordinal)) return Results.BadRequest(new { error = "Route app id must match request app id." });
+    try { return Results.Ok(await routes.SaveAsync(request, ct)); } catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
+});
+app.MapDelete("/api/routes/{appId}", async (string appId, PublicRouteService routes, CancellationToken ct) => { await routes.DeleteAsync(appId, ct); return Results.NoContent(); });
 
 app.MapGet("/api/market", async (MarketService market, CancellationToken ct) => Results.Ok(await market.ListAsync(ct)));
 app.MapGet("/api/market/{id}/manifest", async (string id, MarketService market, CancellationToken ct) => { try { return Results.Ok(await market.GetManifestAsync(id, ct)); } catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); } });
