@@ -29,8 +29,9 @@
         <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
             <h2 class="text-base font-semibold">Tunnel control</h2>
             <label for="port" class="mt-4 block text-sm text-slate-400">Target port</label>
-            <input id="port" type="number" min="1" max="65535" value="5050"
+            <input id="port" type="number" min="1" max="65535" value="5051"
                    class="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-base outline-none focus:border-emerald-500" />
+            <p class="mt-2 text-xs leading-5 text-slate-500">Use <span class="font-mono text-slate-300">5051</span> for Public Routes. This gateway exposes only configured app prefixes and keeps the admin UI on 5050 private to LAN.</p>
 
             <div class="mt-4 grid grid-cols-2 gap-3">
                 <button id="startButton" type="button" class="min-h-11 rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 hover:bg-emerald-400">Start</button>
@@ -91,81 +92,38 @@
             statusBadge.className = data.running
                 ? 'rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300'
                 : 'rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300';
-
-            if (data.publicUrl) {
-                publicUrl.textContent = data.publicUrl;
-                publicUrl.href = data.publicUrl;
-            } else {
-                publicUrl.textContent = data.running ? 'Waiting for tunnel URL...' : 'Not connected';
-                publicUrl.removeAttribute('href');
-            }
-        } catch (error) {
-            statusBadge.textContent = 'Unavailable';
-            statusText.textContent = error.message;
-        }
+            if (data.publicUrl) { publicUrl.textContent = data.publicUrl; publicUrl.href = data.publicUrl; }
+            else { publicUrl.textContent = data.running ? 'Waiting for tunnel URL...' : 'Not connected'; publicUrl.removeAttribute('href'); }
+        } catch (error) { statusBadge.textContent = 'Unavailable'; statusText.textContent = error.message; }
     }
 
     async function refreshLogs() {
-        try {
-            const response = await fetch('/api/ngrok/logs?lines=200');
-            logs.textContent = await response.text();
-        } catch (error) {
-            logs.textContent = error.message;
-        }
+        try { const response = await fetch('/api/ngrok/logs?lines=200'); logs.textContent = await response.text(); }
+        catch (error) { logs.textContent = error.message; }
     }
 
     document.getElementById('saveTokenButton').addEventListener('click', async () => {
-        const token = document.getElementById('token');
-        actionMessage.textContent = 'Saving token...';
-        try {
-            const data = await getJson('/api/ngrok/token', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: token.value })
-            });
-            token.value = '';
-            actionMessage.textContent = data.message;
-        } catch (error) {
-            actionMessage.textContent = error.message;
-        }
+        const token = document.getElementById('token'); actionMessage.textContent = 'Saving token...';
+        try { const data = await getJson('/api/ngrok/token', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: token.value }) }); token.value = ''; actionMessage.textContent = data.message; }
+        catch (error) { actionMessage.textContent = error.message; }
     });
 
     document.getElementById('startButton').addEventListener('click', async () => {
         const value = Number(port.value);
-        if (!Number.isInteger(value) || value < 1 || value > 65535) {
-            actionMessage.textContent = 'Enter a valid port from 1 to 65535.';
-            return;
-        }
+        if (!Number.isInteger(value) || value < 1 || value > 65535) { actionMessage.textContent = 'Enter a valid port from 1 to 65535.'; return; }
         actionMessage.textContent = 'Starting ngrok...';
-        try {
-            const data = await getJson('/api/ngrok/start', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ port: value })
-            });
-            actionMessage.textContent = data.message;
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            await Promise.all([refreshStatus(), refreshLogs()]);
-        } catch (error) {
-            actionMessage.textContent = error.message;
-        }
+        try { const data = await getJson('/api/ngrok/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ port: value }) }); actionMessage.textContent = data.message; await new Promise(resolve => setTimeout(resolve, 1000)); await Promise.all([refreshStatus(), refreshLogs()]); }
+        catch (error) { actionMessage.textContent = error.message; }
     });
 
     document.getElementById('stopButton').addEventListener('click', async () => {
         actionMessage.textContent = 'Stopping ngrok...';
-        try {
-            const data = await getJson('/api/ngrok/stop', { method: 'POST' });
-            actionMessage.textContent = data.message;
-            await Promise.all([refreshStatus(), refreshLogs()]);
-        } catch (error) {
-            actionMessage.textContent = error.message;
-        }
+        try { const data = await getJson('/api/ngrok/stop', { method: 'POST' }); actionMessage.textContent = data.message; await Promise.all([refreshStatus(), refreshLogs()]); }
+        catch (error) { actionMessage.textContent = error.message; }
     });
 
     document.getElementById('refreshLogsButton').addEventListener('click', refreshLogs);
-    refreshStatus();
-    refreshLogs();
-    setInterval(refreshStatus, 5000);
+    refreshStatus(); refreshLogs(); setInterval(refreshStatus, 5000);
 })();
 </script>
 }
