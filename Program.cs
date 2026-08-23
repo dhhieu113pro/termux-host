@@ -8,6 +8,7 @@ builder.Services.AddSingleton<ShellService>();
 builder.Services.AddSingleton<NgrokService>();
 builder.Services.AddSingleton<ApplicationService>();
 builder.Services.AddSingleton<MarketService>();
+builder.Services.AddSingleton<AppMonitoringService>();
 builder.Services.AddHostedService<StartupService>();
 
 var app = builder.Build();
@@ -65,6 +66,8 @@ app.MapPut("/api/apps/{id}", async (string id, bool? restart, ApplicationSaveReq
 app.MapPost("/api/apps/{id}/start", async (string id, ApplicationService applications, CancellationToken ct) => { try { return Results.Ok(new { status = await applications.StartAsync(id, ct) }); } catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); } });
 app.MapPost("/api/apps/{id}/stop", async (string id, ApplicationService applications, CancellationToken ct) => { try { return Results.Ok(new { status = await applications.StopAsync(id, ct) }); } catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); } });
 app.MapPost("/api/apps/{id}/restart", async (string id, ApplicationService applications, CancellationToken ct) => { try { return Results.Ok(new { status = await applications.RestartAsync(id, ct) }); } catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); } });
+app.MapGet("/api/apps/{id}/runtime", async (string id, AppMonitoringService monitoring, CancellationToken ct) => { try { return Results.Ok(await monitoring.GetAsync(id, ct)); } catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); } });
+app.MapGet("/api/apps/{id}/logs", async (string id, int? lines, AppMonitoringService monitoring, CancellationToken ct) => { try { return Results.Text(await monitoring.GetLogsAsync(id, lines ?? 200, ct), "text/plain"); } catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); } });
 
 app.MapGet("/api/market", async (MarketService market, CancellationToken ct) => Results.Ok(await market.ListAsync(ct)));
 app.MapGet("/api/market/{id}/manifest", async (string id, MarketService market, CancellationToken ct) => { try { return Results.Ok(await market.GetManifestAsync(id, ct)); } catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); } });
